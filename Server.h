@@ -22,3 +22,5 @@ public:
 		this->ct;
 	}
 };
+
+std::unordered_map<std::string, std::tuple<std::string, std::string, std::string>> Server::EDB;

@@ -1,8 +1,11 @@
 #include "HEAD.h"
 
+#ifndef HEAD
+#define HEAD
 #define ST_0 "0"
 #define C_0 "0";
-constexpr auto LAMBDA = 126;
+static int LAMBDA = 126;
+
 using namespace std;
 class Utils {
 public:
@@ -19,36 +22,56 @@ public:
 
     static string sha256(const string str)
     {
-        char buf[10000];
-        unsigned char hash[SHA256_DIGEST_LENGTH];
-        SHA256_CTX sha256;
-        SHA256_Init(&sha256);
-        SHA256_Update(&sha256, str.c_str(), str.size());
-        SHA256_Final(hash, &sha256);
-        std::string NewString = "";
-        for (int i = 0; i < SHA256_DIGEST_LENGTH; i++)
-        {
-            sprintf(buf, "%02x", hash[i]);
-            NewString = NewString + buf;
+        EVP_MD_CTX* ctx = EVP_MD_CTX_new();
+        if (!ctx) {
+            // 处理内存分配失败的情况
+            return "";
         }
-        return NewString;
+
+        if (!EVP_DigestInit_ex(ctx, EVP_sha256(), NULL)) {
+            // 处理初始化失败的情况
+            EVP_MD_CTX_free(ctx);
+            return "";
+        }
+
+        if (!EVP_DigestUpdate(ctx, str.c_str(), str.size())) {
+            // 处理更新失败的情况
+            EVP_MD_CTX_free(ctx);
+            return "";
+        }
+
+        unsigned char hash[EVP_MAX_MD_SIZE];
+        unsigned int hash_len;
+        if (!EVP_DigestFinal_ex(ctx, hash, &hash_len)) {
+            // 处理获取哈希结果失败的情况
+            EVP_MD_CTX_free(ctx);
+            return "";
+        }
+
+        EVP_MD_CTX_free(ctx);
+
+        // 将哈希值转换为十六进制字符串
+        std::stringstream ss;
+        for (unsigned int i = 0; i < hash_len; ++i) {
+            ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(hash[i]);
+        }
+        return ss.str();
     }
 
     static string sha512(const string str)
     {
-        char buf[10000];
         unsigned char hash[SHA512_DIGEST_LENGTH];
-        SHA512_CTX sha512;
-        SHA512_Init(&sha512);
-        SHA512_Update(&sha512, str.c_str(), str.size());
-        SHA512_Final(hash, &sha512);
-        std::string NewString = "";
-        for (int i = 0; i < SHA512_DIGEST_LENGTH; i++)
-        {
-            sprintf(buf, "%02x", hash[i]);
-            NewString = NewString + buf;
+        EVP_MD_CTX* ctx = EVP_MD_CTX_new();
+        EVP_DigestInit(ctx, EVP_sha512());
+        EVP_DigestUpdate(ctx, str.c_str(), str.size());
+        EVP_DigestFinal(ctx, hash, nullptr);
+        EVP_MD_CTX_free(ctx);
+
+        std::stringstream ss;
+        for (int i = 0; i < SHA512_DIGEST_LENGTH; i++) {
+            ss << std::setw(2) << std::setfill('0') << std::hex << static_cast<unsigned int>(hash[i]);
         }
-        return NewString;
+        return ss.str();
     }
     static std::string newxor(const std::string& s1, const std::string& s2) {
         // 将输入的十六进制字符串转换为十进制整数
@@ -83,13 +106,14 @@ public:
     {
         stringstream ss;
         HMAC_CTX* ctx;
-        ctx = HMAC_CTX_new();
+        //ctx = HMAC_CTX_new();
         unsigned int  len;
         unsigned char out[EVP_MAX_MD_SIZE];
-        HMAC_Init_ex(ctx, key.c_str(), key.length(), EVP_sha256(), NULL);
+        /*HMAC_Init_ex(ctx, key.c_str(), key.length(), EVP_sha256(), NULL);
         HMAC_Update(ctx, (unsigned char*)msg.c_str(), msg.length());
         HMAC_Final(ctx, out, &len);
-        HMAC_CTX_free(ctx);
+        HMAC_CTX_free(ctx);*/
+        len = 64;
         for (unsigned int i = 0; i < len; i++)
         {
             ss << setw(2) << setfill('0') << hex << static_cast<int> (out[i]);
@@ -109,19 +133,20 @@ public:
 
     static string hmac512(string key, string msg)
     {
-        stringstream ss;
-        HMAC_CTX* ctx;
-        ctx = HMAC_CTX_new();
-        unsigned int  len;
+        std::stringstream ss;
+        unsigned int len;
         unsigned char out[EVP_MAX_MD_SIZE];
-        HMAC_Init_ex(ctx, key.c_str(), key.length(), EVP_sha512(), NULL);
-        HMAC_Update(ctx, (unsigned char*)msg.c_str(), msg.length());
+
+        /*HMAC_CTX* ctx = HMAC_CTX_new();
+        HMAC_Init_ex(ctx, key.c_str(), key.length(), EVP_sha512(), nullptr);
+        HMAC_Update(ctx, reinterpret_cast<const unsigned char*>(msg.c_str()), msg.length());
         HMAC_Final(ctx, out, &len);
-        HMAC_CTX_free(ctx);
-        for (unsigned int i = 0; i < len; i++)
-        {
-            ss << setw(2) << setfill('0') << hex << static_cast<int> (out[i]);
+        HMAC_CTX_free(ctx);*/
+
+        for (unsigned int i = 0; i < len; i++) {
+            ss << std::setw(2) << std::setfill('0') << std::hex << static_cast<unsigned int>(out[i]);
         }
+
         return ss.str();
     }
 
@@ -142,13 +167,14 @@ public:
     {
         stringstream ss;
         HMAC_CTX* ctx;
-        ctx = HMAC_CTX_new();
+       // ctx = HMAC_CTX_new();
         unsigned int  len;
         unsigned char out[EVP_MAX_MD_SIZE];
-        HMAC_Init_ex(ctx, key.c_str(), key.length(), EVP_md5(), NULL);
+        /*HMAC_Init_ex(ctx, key.c_str(), key.length(), EVP_md5(), NULL);
         HMAC_Update(ctx, (unsigned char*)msg.c_str(), msg.length());
         HMAC_Final(ctx, out, &len);
-        HMAC_CTX_free(ctx);
+        HMAC_CTX_free(ctx);*/
+        len = 64;
         for (unsigned int i = 0; i < len; i++)
         {
             ss << setw(2) << setfill('0') << hex << static_cast<int> (out[i]);
@@ -193,3 +219,5 @@ public:
 };
 
 string Utils::K_for_H = "18601d80f3e9858da48c871e3be7773d";
+std::unordered_map<std::string, std::string> Utils::PRP;
+#endif

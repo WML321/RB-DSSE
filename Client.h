@@ -38,3 +38,6 @@ public:
 		Kw_ = Utils::rand_str(LAMBDA);
 	}
 };
+
+std::unordered_map<string, pair<string, int>> Client::SUM;
+std::unordered_map<string, pair<string, string>> Client::T;

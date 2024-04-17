@@ -36,7 +36,7 @@ int KUPRF::Eval(unsigned char* out, const unsigned char* key, const string& keyw
 {
     unsigned char buf[SHA512_DIGEST_LENGTH];
     unsigned int op_data;
-    SHA512_CTX ctx;
+    EVP_MD_CTX* ctx = EVP_MD_CTX_new();
     EC_POINT* ele;
     BIGNUM* bn1;
 
@@ -57,25 +57,44 @@ int KUPRF::Eval(unsigned char* out, const unsigned char* key, const string& keyw
         op_data = 0;
     }
 
-    SHA512_Init(&ctx);
-    SHA512_Update(&ctx, keyword.c_str(), keyword.size());
-    SHA512_Update(&ctx, &op_data, sizeof(op_data));
-    SHA512_Final(buf, &ctx);
+    // 初始化哈希上下文
+    if (!EVP_DigestInit_ex(ctx, EVP_sha512(), NULL)) {
+        // 处理初始化失败的情况
+        return 0;
+    }
+
+    // 更新哈希上下文，使用 EVP_DigestUpdate
+    if (!EVP_DigestUpdate(ctx, keyword.c_str(), keyword.size())) {
+        // 处理更新失败的情况
+        return 0;
+    }
+    if (!EVP_DigestUpdate(ctx, &op_data, sizeof(op_data))) {
+        // 处理更新失败的情况
+        return 0;
+    }
+
+    // 结束哈希计算并获取结果，使用 EVP_DigestFinal_ex
+    unsigned int len;
+    if (!EVP_DigestFinal_ex(ctx, buf, &len)) {
+        // 处理获取哈希结果失败的情况
+        return 0;
+    }
 
     // 将哈希结果映射到椭圆曲线上
-    EC_POINT_oct2point(group_, ele, buf, SHA512_DIGEST_LENGTH, nullptr);
+    EC_POINT_oct2point(group_, ele, buf, len, nullptr);
 
     // 执行乘法运算 ele = ele * bn1
     EC_POINT_mul(group_, ele, nullptr, ele, bn1, nullptr);
 
     // 将结果转换为二进制并存储到输出缓冲区中
-    int len = EC_POINT_point2oct(group_, ele, POINT_CONVERSION_UNCOMPRESSED, out, 33, nullptr);
+    int out_len = EC_POINT_point2oct(group_, ele, POINT_CONVERSION_UNCOMPRESSED, out, 33, nullptr);
 
     // 释放资源
     EC_POINT_free(ele);
     BN_free(bn1);
+    EVP_MD_CTX_free(ctx);
 
-    return len;
+    return out_len;
 }
 
 int KUPRF::update_token(unsigned char* out, const unsigned char* K1, const unsigned char* K2) {
@@ -83,10 +102,9 @@ int KUPRF::update_token(unsigned char* out, const unsigned char* K1, const unsig
     BIGNUM* bn_K2 = BN_bin2bn(K2, 32, nullptr);
     BIGNUM* bn_out = BN_new();
     BIGNUM* b = BN_new();
-    BIGNUM* c = BN_new();
     BIGNUM* ord = BN_new();
 
-    EC_GROUP_get_order(group_, ord);
+    EC_GROUP_get_order(group_, ord, ctx_);
 
     // 计算 bn_out = (K1^{-1} mod ord) * K2 mod ord
     BN_mod_inverse(b, bn_K1, ord, ctx_);
@@ -100,7 +118,6 @@ int KUPRF::update_token(unsigned char* out, const unsigned char* K1, const unsig
     BN_free(bn_K2);
     BN_free(bn_out);
     BN_free(b);
-    BN_free(c);
     BN_free(ord);
 
     return 0;
@@ -136,7 +153,7 @@ int KUPRF::mul(unsigned char* out, const unsigned char* K1, const unsigned char*
     BIGNUM* ord = BN_new();
 
     // 获取椭圆曲线的阶
-    EC_GROUP_get_order(group_, ord);
+    EC_GROUP_get_order(group_, ord, ctx_);
 
     // 计算 K1 * K2 mod ord
     BN_mod_mul(bn_K1, bn_K1, bn_K2, ord, ctx_);

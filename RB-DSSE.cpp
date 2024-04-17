@@ -171,8 +171,19 @@ void Update_Server(Client& client, Server& server) {
 	return;
 }
 
-int main()
-{
-	cout << "Hello CMake." << endl;
-	return 0;
+void testF() {
+	auto start = std::chrono::high_resolution_clock::now();
+	string Ks = Utils::rand_str(64);
+	string tw = Utils::F(Ks, "word");
+	auto end = std::chrono::high_resolution_clock::now();
+	auto duration_milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+	cout << "PRF Time: " << duration_milliseconds.count() << "ms" << endl;
 }
+
+//int main()
+//{
+//	cout << "Helloaaaaaaaaaaaaaaaaaaaaaaaaa CMake." << endl;
+//	//testF();
+//	cout << "Hello CMake." << endl;
+//	return 0;
+//}
