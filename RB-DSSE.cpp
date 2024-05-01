@@ -180,10 +180,10 @@ void testF() {
 	cout << "PRF Time: " << duration_milliseconds.count() << "ms" << endl;
 }
 
-//int main()
-//{
-//	cout << "Helloaaaaaaaaaaaaaaaaaaaaaaaaa CMake." << endl;
-//	//testF();
-//	cout << "Hello CMake." << endl;
-//	return 0;
-//}
+int main()
+{
+	cout << "Helloaaaaaaaaaaaaaaaaaaaaaaaaa CMake." << endl;
+	testF();
+	cout << "Hello CMake." << endl;
+	return 0;
+}
